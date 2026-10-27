@@ -2,90 +2,106 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
     <title>BookMark Boards</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="assets/css/utilities.css?v=search-7">
     <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-    
-    <script type="module" src="assets/js/firebase.js"></script>
 
-    <link rel="stylesheet" href="assets/css/styles.css">
+    <script src="assets/js/security.js?v=search-7"></script>
+    <script type="module" src="assets/js/firebase.js?v=search-7"></script>
+
+    <link rel="stylesheet" href="assets/css/styles.css?v=search-7">
 </head>
 <body class="bg-[#0a0b0f] text-gray-100 min-h-screen flex overflow-hidden">
 
-    <!-- Sidebaraaa -->
-    <aside id="sidebar" class="z-[100] shadow-2xl shrink-0" aria-label="ボード一覧">
-        <div class="sidebar-inner w-[260px] h-full flex flex-col">
-            <div class="p-5 border-b shrink-0" style="border-color: var(--border-subtle)">
+    <button id="sidebarBackdrop" class="sidebar-backdrop" hidden aria-label="ボード一覧を閉じる" tabindex="-1"></button>
+    <!-- Sidebar -->
+    <aside id="sidebar" tabindex="-1" class="z-[100] shadow-2xl shrink-0" aria-label="ボード一覧">
+        <div class="sidebar-inner h-full flex flex-col">
+            <div class="sidebar-header p-5 border-b shrink-0" style="border-color: var(--border-subtle)">
                 <div class="flex justify-between items-center mb-4">
                     <span class="sidebar-logo">BookMark Boards</span>
-                    <button onclick="toggleSidebar()" class="md:hidden text-xs font-bold uppercase tracking-wider px-2 py-1 rounded" style="color:var(--text-muted)" aria-label="サイドバーを閉じる">Close</button>
+                    <button type="button" id="sidebarClose" class="btn-ghost sidebar-close" aria-label="サイドバーを閉じる">×</button>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="openNewFolderModal()" class="action-btn action-btn-md" style="color:#a89fff" title="新規フォルダ" aria-label="新規フォルダ"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg></button>
-                    <button onclick="openNewBoardModal()" class="action-btn action-btn-md" style="color:#6ee7b7" title="新規ボード" aria-label="新規ボード"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></button>
-                    <button onclick="exportData()" class="action-btn action-btn-md" style="color:#fcd34d" title="全体データ出力" aria-label="全体データ出力"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg></button>
-                    <button onclick="importData()" class="action-btn action-btn-md" style="color:#7dd3fc" title="データ/ボード取込" aria-label="データまたはボードを取り込む"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg></button>
+                <div data-edit-area class="flex items-center gap-2">
+                    <button data-action="openNewFolderModal" class="action-btn action-btn-md" style="color:#a89fff" title="新規フォルダ" aria-label="新規フォルダ"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg></button>
+                    <button data-action="openNewBoardModal" class="action-btn action-btn-md" style="color:#6ee7b7" title="新規ボード" aria-label="新規ボード"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></button>
+                    <button data-action="exportData" class="action-btn action-btn-md" style="color:#fcd34d" title="全体データ出力" aria-label="全体データ出力"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg></button>
+                    <button data-action="importData" class="action-btn action-btn-md" style="color:#7dd3fc" title="データ/ボード取込" aria-label="データまたはボードを取り込む"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg></button>
                 </div>
             </div>
-            <nav class="flex-grow overflow-y-auto p-3 space-y-0.5" id="boardList" aria-label="ボードとフォルダ"></nav>
+            <nav data-edit-area class="flex-grow overflow-y-auto p-3 space-y-0.5" id="boardList" aria-label="ボードとフォルダ"></nav>
+            <section class="account-panel p-3 text-xs space-y-2" aria-label="同期とアカウント">
+                <p id="syncStatus" role="status" aria-live="polite">読み込み中…</p>
+                <button id="signIn" hidden class="btn-ghost">Googleでログイン</button>
+                <button id="signOut" hidden class="btn-ghost">ログアウト</button>
+                <details id="accountDetails" class="account-details">
+                    <summary>データ管理 <span aria-hidden="true">⌄</span></summary>
+                    <div class="account-actions">
+                <button id="uploadLocal" hidden class="btn-ghost">端末データを移行</button>
+                <button id="backupDraft" hidden class="btn-ghost">バックアップを保存</button>
+                <button id="reloadCloud" hidden class="btn-ghost">同期を再開</button>
+                    </div>
+                </details>
+            </section>
         </div>
     </aside>
 
     <!-- Main Container -->
     <div id="main-container" class="flex flex-col h-screen overflow-hidden">
         <header class="p-4 sticky top-0 z-[60] space-y-3">
-            <div class="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between w-full">
-                <div class="flex items-center gap-3">
-                    <button onclick="toggleSidebar()" class="p-2 rounded-lg transition-all" style="color:var(--text-muted)" onmouseover="this.style.color='var(--text-primary)';this.style.background='var(--bg-elevated)'" onmouseout="this.style.color='var(--text-muted)';this.style.background='transparent'" aria-label="サイドバーを開閉">
+            <div class="workspace-heading">
+                <div class="board-heading flex items-center gap-3">
+                    <button id="sidebarToggle" aria-controls="sidebar" aria-expanded="true" class="p-2 rounded-lg transition-all" style="color:var(--text-muted)" aria-label="サイドバーを開閉">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                     </button>
-                    <h2 id="activeBoardTitle" class="truncate drop-shadow-sm">Loading...</h2>
+                    <div class="min-w-0 flex-1"><div class="board-title-row"><h2 id="activeBoardTitle" class="truncate drop-shadow-sm">読み込み中</h2><span id="boardCount" class="board-count" aria-label="カード数"></span></div><p id="syncSummary" class="text-xs truncate" style="color:var(--text-secondary)" role="status">読み込み中…</p></div>
                 </div>
-                <div class="flex items-center gap-2 w-full md:w-auto">
-                    <input type="text" id="urlInput" placeholder="X または YouTube の URL を貼り付け..." class="px-4 py-2 flex-grow md:w-72 h-10" style="font-size:13px">
-                    <button onclick="addPost()" class="save-btn py-2 px-5 h-10 shrink-0">保存</button>
-                    <button onclick="addNoteCard()" class="add-note-btn py-2 px-4 h-10 shrink-0" title="テキストカードを作成"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg><span class="hidden sm:inline">メモ</span></button>
+                <div data-edit-area class="composer flex items-center gap-2 w-full md:w-auto">
+                    <input type="url" inputmode="url" enterkeyhint="go" autocapitalize="off" autocomplete="off" aria-label="XまたはYouTubeのURL" id="urlInput" placeholder="URLを貼り付け" class="px-4 py-2 flex-grow md:w-72 h-10" >
+                    <button data-action="addPost" class="save-btn py-2 px-5 h-10 shrink-0">保存</button>
+                    <button data-action="addNoteCard" class="add-note-btn py-2 px-4 h-10 shrink-0" aria-label="メモを追加" title="テキストカードを作成"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg><span>メモ</span></button>
                 </div>
             </div>
-            
-            <div class="flex items-center gap-1.5 justify-end">
-                <div id="searchContainer" onmouseleave="handleSearchMouseLeave()" class="flex items-center h-9 px-2 overflow-hidden" style="transition: all 0.2s">
-                    <button onclick="toggleSearch()" class="w-7 h-7 flex items-center justify-center shrink-0 transition-colors" style="color:var(--text-secondary)" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'" aria-label="検索を開閉">
+
+            <div data-edit-area class="header-tools flex items-center gap-1.5 justify-end">
+                <div id="searchContainer" role="search" aria-label="カード内を検索" class="flex items-center h-9 px-2 overflow-hidden" style="transition: all 0.2s">
+                    <button id="searchToggle" aria-controls="searchInput" data-action="toggleSearch" class="w-7 h-7 flex items-center justify-center shrink-0 transition-colors" style="color:var(--text-secondary)" aria-label="検索欄に移動">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </button>
-                    <input type="text" id="searchInput" oninput="handleSearch(this.value)" placeholder="検索..." class="w-0 opacity-0 border-none bg-transparent focus:ring-0 p-0" style="font-size:12px">
+                    <input type="search" aria-label="カードを検索" id="searchInput" placeholder="検索" class="border-none bg-transparent p-0" autocomplete="off" enterkeyhint="search">
+                    <button type="button" id="clearSearch" class="clear-search" aria-label="検索を解除" hidden>×</button>
                 </div>
-                <button onclick="toggleFilter()" id="filterToggleBtn" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all" style="color:var(--text-secondary);background:var(--bg-elevated);border:1px solid var(--border-default)" title="タグフィルターを表示" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'">
+                <button data-action="toggleFilter" id="filterToggleBtn" aria-label="タグで絞り込む" aria-controls="tagFilterList" aria-expanded="false" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all" style="color:var(--text-secondary);background:var(--bg-elevated);border:1px solid var(--border-default)" title="タグフィルターを表示">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
                 </button>
-                <button onclick="openHelpModal()" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all" style="color:var(--text-secondary);background:var(--bg-elevated);border:1px solid var(--border-default)" title="使い方ガイド" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'" aria-label="使い方ガイド">
+                <button data-action="openHelpModal" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all" style="color:var(--text-secondary);background:var(--bg-elevated);border:1px solid var(--border-default)" title="使い方ガイド" aria-label="使い方ガイド">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
             </div>
             <div id="tagFilterList" class="overflow-x-auto no-scrollbar w-full"></div>
         </header>
 
-        <main class="flex-grow p-5 overflow-y-auto overflow-x-hidden" id="main-scroll">
+        <main data-edit-area class="flex-grow p-5 overflow-y-auto overflow-x-hidden" id="main-scroll">
             <div id="emptyState" class="hidden flex flex-col items-center justify-center h-full" style="color:var(--text-muted)">
-                <p class="text-center">まだポストがありません。</p>
+                <div class="empty-mark" aria-hidden="true">＋</div><p class="text-center">カードがありません</p><button id="emptyAction" type="button" class="btn-ghost">メモを追加</button>
             </div>
             <div id="gallery" class="board-columns"></div>
         </main>
     </div>
 
     <!-- Modals -->
-    <div id="modal-container" class="fixed inset-0 z-[200] hidden items-center justify-center p-4" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(8px)">
+    <div role="dialog" aria-modal="true" aria-label="ボードの操作" id="modal-container" class="fixed inset-0 z-[200] hidden items-center justify-center p-4" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(8px)">
         <!-- New Board Modal -->
         <div id="new-board-modal" class="hidden modal-box w-full max-w-md p-6 modal-enter">
             <h3 class="modal-title mb-5">新規ボード作成</h3>
             <input type="text" id="newBoardName" placeholder="ボード名" class="modal-input mb-5">
             <div class="flex gap-2 justify-end">
-                <button onclick="closeModal()" class="btn-ghost">キャンセル</button>
-                <button onclick="confirmCreateBoard()" class="btn-primary">作成</button>
+                <button data-action="closeModal" class="btn-ghost">キャンセル</button>
+                <button data-action="confirmCreateBoard" class="btn-primary">作成</button>
             </div>
         </div>
         <!-- New Folder Modal -->
@@ -93,8 +109,8 @@
             <h3 class="modal-title mb-5">新規フォルダ作成</h3>
             <input type="text" id="newFolderName" placeholder="フォルダ名" class="modal-input mb-5">
             <div class="flex gap-2 justify-end">
-                <button onclick="closeModal()" class="btn-ghost">キャンセル</button>
-                <button onclick="confirmCreateFolder()" class="btn-primary">作成</button>
+                <button data-action="closeModal" class="btn-ghost">キャンセル</button>
+                <button data-action="confirmCreateFolder" class="btn-primary">作成</button>
             </div>
         </div>
         <!-- Rename Modal -->
@@ -102,25 +118,25 @@
             <h3 class="modal-title mb-5">名前を変更</h3>
             <input type="text" id="renameInput" placeholder="新しい名前" class="modal-input mb-5">
             <div class="flex gap-2 justify-end">
-                <button onclick="closeModal()" class="btn-ghost">キャンセル</button>
+                <button data-action="closeModal" class="btn-ghost">キャンセル</button>
                 <button id="confirmRenameBtn" class="btn-primary">変更を保存</button>
             </div>
         </div>
         <!-- Board Export Modal -->
         <div id="export-board-modal" class="hidden modal-box w-full max-w-md p-6 modal-enter">
             <h3 class="modal-title mb-5 text-amber-400">ボードを書き出す</h3>
-            <p class="text-xs text-gray-500 mb-4">保存するファイル名を決めてください。</p>
+
             <input type="text" id="exportFileName" placeholder="ファイル名" class="modal-input mb-5">
             <div class="flex gap-3 justify-end">
-                <button onclick="closeModal()" class="btn-ghost">キャンセル</button>
-                <button onclick="confirmExportBoard()" class="btn-primary" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%)">書き出す</button>
+                <button data-action="closeModal" class="btn-ghost">キャンセル</button>
+                <button data-action="confirmExportBoard" class="btn-primary" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%)">書き出す</button>
             </div>
         </div>
         <!-- Confirmation Modal -->
         <div id="confirm-modal" class="hidden modal-box w-full max-w-sm p-7 modal-enter text-gray-100">
             <p id="confirmMessage" class="text-sm text-gray-400 mb-8 text-center leading-relaxed"></p>
             <div class="flex gap-2 justify-center">
-                <button onclick="closeModal()" class="btn-ghost">キャンセル</button>
+                <button data-action="closeModal" class="btn-ghost">キャンセル</button>
                 <button id="executeConfirmBtn" class="btn-danger">削除</button>
             </div>
         </div>
@@ -129,59 +145,27 @@
             <div class="flex justify-between items-center mb-6">
                 <h3 class="flex items-center gap-3" style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.25rem;color:#a89fff">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    使い方ガイド
+                    使い方
                 </h3>
-                <button onclick="closeModal()" class="w-9 h-9 flex items-center justify-center rounded-full transition-all" style="color:var(--text-muted)" onmouseover="this.style.background='var(--bg-hover)';this.style.color='var(--text-primary)'" onmouseout="this.style.background='transparent';this.style.color='var(--text-muted)'">
+                <button data-action="closeModal" aria-label="使い方を閉じる" class="w-9 h-9 flex items-center justify-center rounded-full transition-all" style="color:var(--text-muted)">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
-            <div class="space-y-3" style="color:var(--text-primary)">
-
-                <!-- カードを追加する -->
-                <div class="help-step">
-                    <h4 class="help-title">カードを追加する</h4>
-                    <p class="text-sm leading-relaxed" style="color:var(--text-secondary)">上部の入力欄に <strong style="color:var(--text-primary)">X または YouTube の URL</strong> を貼り付けて「保存」を押すと、現在のボードにカードを追加できます。Enter キーでも保存できます。同じ URL は重複して追加されません。</p>
-                    <p class="text-sm leading-relaxed mt-2" style="color:var(--text-secondary)">YouTube はサムネイルをクリックするとカード内で再生できます。右上の全画面アイコンから大きく表示でき、外部で開きたい場合はカード下部のリンクを使えます。</p>
-                    <p class="text-sm leading-relaxed mt-2" style="color:var(--text-secondary)">自由に書き残したい内容は「<strong style="color:var(--text-primary)">メモ</strong>」ボタンからテキストカードとして追加できます。</p>
-                </div>
-
-                <!-- タグ・検索・フィルター -->
-                <div class="help-step">
-                    <h4 class="help-title">タグ・検索・絞り込み</h4>
-                    <p class="text-sm leading-relaxed" style="color:var(--text-secondary)">X のカードには <strong style="color:var(--text-primary)">x</strong>、YouTube のカードには <strong style="color:var(--text-primary)">youtube</strong> タグが自動で付きます。カード下部のタグ入力欄にタグ名を入力して <strong style="color:var(--text-primary)">Enter</strong> キーを押すと、任意のタグも追加できます。</p>
-                    <p class="text-sm leading-relaxed mt-2" style="color:var(--text-secondary)">タグアイコンを押すとタグフィルターが開きます。複数タグを選ぶと、すべてのタグを持つカードだけを表示します。選択を戻すときは「クリア」を押します。</p>
-                    <p class="text-sm leading-relaxed mt-2" style="color:var(--text-secondary)">検索アイコンを押すと検索バーが開きます。メモ、テキストカードのタイトル、本文をリアルタイムで絞り込めます。</p>
-                </div>
-
-                <!-- ボードとフォルダ -->
-                <div class="help-step">
-                    <h4 class="help-title">ボードとフォルダで分類する</h4>
-                    <p class="text-sm leading-relaxed" style="color:var(--text-secondary)">サイドバーからボードやフォルダを作成できます。ボード名やフォルダ名は鉛筆アイコンで変更でき、不要になったものは削除できます。</p>
-                    <p class="text-sm leading-relaxed mt-2" style="color:var(--text-secondary)">ボードをフォルダへドラッグすると分類できます。フォルダ名をクリックすると、ボード一覧を折りたたみ／展開できます。</p>
-                </div>
-
-                <!-- ドラッグ＆ドロップ -->
-                <div class="help-step">
-                    <h4 class="help-title">ドラッグ＆ドロップで並び替え・複製</h4>
-                    <p class="text-sm leading-relaxed" style="color:var(--text-secondary)">カードをドラッグして別のカードの位置へ動かすと並び替えできます。サイドバーの別ボードへドロップすると、そのカードをコピーして追加します。元のボードのカードは残ります。</p>
-                </div>
-
-                <!-- データ保存 -->
-                <div class="help-step">
-                    <h4 class="help-title">データの保存とバックアップ</h4>
-                    <div class="help-important">
-                        <p>データはブラウザのローカルストレージに保存されます。ブラウザのデータを消去すると保存内容も消えるため、サイドバーのデータ出力アイコンから定期的に JSON バックアップを取ってください。</p>
-                        <p class="mt-1">バックアップファイルはデータ取込アイコンから復元できます。ボードごとの書き出しもできるため、テーマ別に共有・保管したいときに使えます。</p>
-                    </div>
-                </div>
-
-            </div>
+            <dl class="quick-help">
+                <div><dt>ブックマーク</dt><dd>URLを貼り付けて保存</dd></div>
+                <div><dt>メモ</dt><dd>メモボタンで追加</dd></div>
+                <div><dt>タグ</dt><dd>入力してEnter</dd></div>
+                <div><dt>パネル</dt><dd>「メモ・タグ」で開閉</dd></div>
+                <div><dt>同期</dt><dd>各端末で同じGoogleアカウント</dd></div>
+                <div><dt>バックアップ</dt><dd>メニューの書き出し・取り込み</dd></div>
+            </dl>
         </div>
     </div>
 
     <input type="file" id="importFile" class="hidden" accept=".json">
     <div id="toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 px-5 py-2.5 rounded-xl shadow-2xl transition-all duration-300 opacity-0 pointer-events-none z-[300]"></div>
 
-    <script src="assets/js/app.js"></script>
+    <script src="assets/js/app.js?v=search-7"></script>
+    <script src="assets/js/mobile.js?v=search-7"></script>
 </body>
 </html>

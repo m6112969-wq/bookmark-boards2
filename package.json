@@ -1,0 +1,23 @@
+{
+  "name": "bookmark-boards",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 8000 --bind 127.0.0.1 --directory public",
+    "prepare:hosting": "npm run build:css && node scripts/prepare-hosting.mjs",
+    "test": "npm run build:css && node --test tests/browser.test.mjs tests/security.test.mjs",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-bookmark-boards 'node --test tests/rules.test.mjs'",
+    "build:css": "tailwindcss -i assets/css/tailwind.css -o assets/css/utilities.css --minify"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "6.0.0",
+    "firebase": "13.1.0",
+    "firebase-tools": "15.34.1",
+    "playwright": "1.58.2",
+    "tailwindcss": "3.4.17"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "1.14.6",
+    "uuid@9.0.1": "11.1.1"
+  }
+}

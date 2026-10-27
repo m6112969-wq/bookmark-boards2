@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAccountOwner(uid) {
+      // Every verified Google account can access only its own UID path.
+      return request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+    match /users/{uid}/settings/appData {
+      function validPayload() {
+        return request.resource.data.keys().hasOnly(['revision', 'data'])
+        && request.resource.data.revision is int
+        && request.resource.data.data is map
+        && request.resource.data.data.keys().hasAll(['boards', 'folders', 'activeBoardId'])
+        && request.resource.data.data.keys().hasOnly(['boards', 'folders', 'activeBoardId'])
+        && (request.resource.data.data.activeBoardId == null || request.resource.data.data.activeBoardId is string)
+        && request.resource.data.data.boards is list
+        && request.resource.data.data.folders is list
+        && request.resource.data.data.boards.size() <= 100
+        && request.resource.data.data.folders.size() <= 100;
+      }
+      allow get: if isAccountOwner(uid);
+      allow create: if isAccountOwner(uid) && validPayload() && request.resource.data.revision == 1;
+      allow update: if isAccountOwner(uid) && validPayload()
+        && request.resource.data.revision == resource.data.revision + 1;
+    }
+    // Every other path, including legacy Canvas paths, is denied by default.
+  }
+}

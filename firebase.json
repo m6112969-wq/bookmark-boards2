@@ -1,0 +1,74 @@
+{
+  "hosting": {
+    "public": "public",
+    "predeploy": [
+      "npm run prepare:hosting"
+    ],
+    "ignore": [
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "camera=(), microphone=(), geolocation=()"
+          }
+        ]
+      },
+      {
+        "source": "/",
+        "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'none'; script-src 'self' https://www.gstatic.com https://apis.google.com https://platform.twitter.com https://cdn.syndication.twimg.com; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://i.ytimg.com https://*.twimg.com https://*.twitter.com; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://www.googleapis.com https://accounts.google.com https://syndication.twitter.com https://cdn.syndication.twimg.com; frame-src https://bookmarkboard-6b738.firebaseapp.com https://accounts.google.com https://www.youtube-nocookie.com https://www.youtube.com https://platform.twitter.com https://syndication.twitter.com; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://accounts.google.com; upgrade-insecure-requests"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          }
+        ]
+      },
+      {
+        "source": "/index.html",
+        "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'none'; script-src 'self' https://www.gstatic.com https://apis.google.com https://platform.twitter.com https://cdn.syndication.twimg.com; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://i.ytimg.com https://*.twimg.com https://*.twitter.com; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://www.googleapis.com https://accounts.google.com https://syndication.twitter.com https://cdn.syndication.twimg.com; frame-src https://bookmarkboard-6b738.firebaseapp.com https://accounts.google.com https://www.youtube-nocookie.com https://www.youtube.com https://platform.twitter.com https://syndication.twitter.com; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://accounts.google.com; upgrade-insecure-requests"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          }
+        ]
+      }
+    ],
+    "site": "bookmarkboard-6b738"
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "emulators": {
+    "firestore": {
+      "port": 8080
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
+  }
+}
