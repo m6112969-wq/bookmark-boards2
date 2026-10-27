@@ -2,8 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isAccountOwner(uid) {
-      // Every verified Google account can access only its own UID path.
+      // Only the configured owner may use cloud data.
       return request.auth != null
+        && request.auth.uid == 'zIhJ2TWW5kMTB9wU0MYxIGC80hu2'
         && request.auth.uid == uid
         && request.auth.token.email_verified == true
         && request.auth.token.firebase.sign_in_provider == 'google.com';

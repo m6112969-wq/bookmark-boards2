@@ -1,6 +1,6 @@
 # BookMark Boards
 
-X・YouTubeのブックマークとメモを、ボードやフォルダで整理できるWebアプリです。Googleアカウントでログインすると、スマホとPCでデータを同期できます。
+X・YouTubeのブックマークとメモを、ボードやフォルダで整理できるWebアプリです。所有者のGoogleアカウントでログインすると、スマホとPCでデータを同期できます。公開中の同期機能は所有者専用です。
 
 **[アプリを開く](https://bookmarkboard-6b738.firebaseapp.com/)**
 
@@ -9,7 +9,7 @@ X・YouTubeのブックマークとメモを、ボードやフォルダで整理
 - X・YouTubeのURL保存、動画の埋め込み再生
 - テキストメモ、タグ、検索・絞り込み
 - ボードとフォルダによる分類
-- Googleログインとアカウントごとのデータ分離
+- Googleログインと所有者専用の同期
 - JSONの書き出し・取り込み
 - スマホ対応のレイアウトとタップ操作
 
@@ -21,7 +21,7 @@ X・YouTubeのブックマークとメモを、ボードやフォルダで整理
 
 入力欄から離れると編集内容を保存します。検索欄では日本語変換の確定後に絞り込み、Escで検索文字を消去できます。
 
-同じGoogleアカウントでログインした端末同士は同期します。他のアカウントのデータは閲覧・編集できません。ログアウト中は、そのブラウザ内だけに保存します。
+設定した所有者のGoogleアカウントでログインした端末同士は同期します。他のアカウントは、自分用の保存先を含めてクラウドデータを読み書きできません。ログアウト中は、そのブラウザ内だけに保存します。
 
 ## ローカル開発
 
@@ -84,14 +84,20 @@ Web設定はブラウザへ配信する公開情報です。サービスアカ�
 
 ```sh
 npx firebase login
-npx firebase deploy --project YOUR_PROJECT_ID --only hosting,firestore:rules
+npx firebase deploy --project YOUR_PROJECT_ID --only hosting
 ```
 
 別端末で認証する環境では、ログイン時に `--no-localhost` を指定できます。
 
 Googleログインはリダイレクト方式です。まずは `authDomain` と同じ `https://YOUR_PROJECT_ID.firebaseapp.com` で利用してください。独自ドメインを使う場合は、[リダイレクト認証の推奨設定](https://firebase.google.com/docs/auth/web/redirect-best-practices)も必要です。
 
-公開後は、同じアカウントでの端末間同期と、別アカウントでデータが分かれることを確認してください。各アカウントの保存先は `users/{uid}/settings/appData` です。特定のユーザーUIDをルールへ登録する必要はありません。
+公開後にGoogleログインし、Firebase Consoleの「Authentication → Users」で所有者のUIDを確認します。初回はデータ取得エラーでも認証ユーザーは登録されます。`firestore.rules` の `isAccountOwner` にある固定UIDを自分のUIDへ置き換え、ルールを公開してください。
+
+```sh
+npx firebase deploy --project YOUR_PROJECT_ID --only firestore:rules
+```
+
+所有者の保存先は `users/{uid}/settings/appData` です。同じ所有者アカウントでの端末間同期と、別アカウントの読み書きが拒否されることを確認してください。サイトのHTML表示とGoogleログイン自体は公開されており、クラウドデータの利用を所有者だけに制限する構成です。
 
 ## データの移行・バックアップ
 
@@ -136,7 +142,7 @@ npm run test:rules
 
 ## セキュリティ
 
-- 確認済みのGoogleアカウントと保存先UIDが一致する場合だけアクセスを許可
+- 設定した所有者UID・確認済みGoogle認証・保存先UIDがすべて一致する場合だけアクセスを許可
 - 他ユーザーの保存先、ユーザー一覧、未ログインのアクセスを拒否
 - URL・JSON・保存データを共通スキーマで検証
 - CSPでインラインJavaScriptとイベント属性を禁止し、外部接続先を制限
