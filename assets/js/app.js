@@ -32,10 +32,6 @@
             }[char]));
         }
 
-        function jsString(value) {
-            return `'${String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r?\n/g, ' ')}'`;
-        }
-
         function showToast(msg) {
             const t = document.getElementById('toast'); t.textContent = msg; t.style.opacity = '1'; t.style.transform = 'translate(-50%, -10px)';
             setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translate(-50%, 0)'; }, 2000);
@@ -125,10 +121,10 @@
             const boardId = String(id); const data = JSON.parse(JSON.stringify(window.appState.appData));
             data.activeBoardId = boardId; window.appState.searchQuery = ""; window.appState.selectedTags = [];
             const input = document.getElementById('searchInput'); if (input) input.value = "";
-            window.saveData(data); if (window.innerWidth < 768) toggleSidebar();
+            window.saveData(data); if (window.innerWidth < 768) window.setSidebarOpen(false);
         }
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('closed'); }
-        function handleSearch(val) { window.appState.searchQuery = val.toLowerCase(); renderActiveBoard(); }
+        const searchText = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase('ja');
+        function handleSearch(val) { window.appState.searchQuery = searchText(val.trim()); renderActiveBoard(); }
         function clearTagFilters() {
             window.appState.selectedTags = [];
             if (window.appState.isFilterExpanded) updateFilterTagsUI();
@@ -144,14 +140,19 @@
             if (window.appState.isFilterExpanded) updateFilterTagsUI();
             renderActiveBoard();
         }
-        function toggleSearch() {
-            const input = document.getElementById('searchInput'); window.appState.isSearchExpanded = !window.appState.isSearchExpanded;
-            if (window.appState.isSearchExpanded) { input.classList.replace('w-0', 'w-64'); input.classList.replace('opacity-0', 'opacity-100'); input.classList.add('px-3'); input.focus(); }
-            else { input.classList.replace('w-64', 'w-0'); input.classList.replace('opacity-100', 'opacity-0'); input.classList.remove('px-3'); }
+        // Search stays visible. The icon only places the cursor in the field.
+        function setSearchExpanded(_expanded, focus = false) {
+            const input = document.getElementById('searchInput');
+            window.appState.isSearchExpanded = true;
+            document.getElementById('searchContainer').classList.add('search-expanded');
+            input.classList.remove('w-0', 'w-64', 'opacity-0', 'opacity-100', 'px-3');
+            if (focus) input.focus();
         }
-        function handleSearchMouseLeave() { const input = document.getElementById('searchInput'); if (!input.value && window.appState.isSearchExpanded) toggleSearch(); }
+        window.setSearchExpanded = setSearchExpanded;
+        function toggleSearch() { setSearchExpanded(true, true); }
         function toggleFilter() {
             const list = document.getElementById('tagFilterList'); const btn = document.getElementById('filterToggleBtn'); window.appState.isFilterExpanded = !window.appState.isFilterExpanded;
+            btn.setAttribute('aria-expanded', String(window.appState.isFilterExpanded));
             if (window.appState.isFilterExpanded) { list.classList.add('expanded'); btn.classList.add('bg-indigo-500/10', 'text-indigo-400'); updateFilterTagsUI(); }
             else { list.classList.remove('expanded'); btn.classList.remove('bg-indigo-500/10', 'text-indigo-400'); }
         }
@@ -212,6 +213,8 @@
                 const isActive = isBoard && String(item.id) === String(data.activeBoardId);
                 const div = document.createElement('div');
                 div.className = `sidebar-item group ${isActive ? 'active-board' : ''}`;
+                div.setAttribute('role', 'group');
+                div.setAttribute('aria-label', `${isBoard ? 'ボード' : 'フォルダ'}：${item.name}`);
                 if (isBoard) {
                     div.setAttribute('draggable', 'true'); div.ondragstart = (e) => handleDragStartBoard(item.id, e);
                     div.onclick = () => selectBoard(item.id);
@@ -223,15 +226,21 @@
                     ? `<span class="mr-2" style="opacity:0.4"><svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M8 9h8m-8 6h8" /></svg></span>` 
                     : `<span class="mr-2" style="color:var(--text-muted)">${item.expanded ? ICONS.chevronDown : ICONS.chevronRight}</span>`;
                 
-                const itemId = escapeHtml(jsString(item.id));
-                const itemName = escapeHtml(jsString(item.name));
-                let actions = `<div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-all" style="color:var(--text-secondary)">`;
+                let actions = `<div class="sidebar-item-actions flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-all" style="color:var(--text-secondary)">`;
                 if(isBoard) {
-                    actions += `<button onclick="openExportBoardModal(${itemId}, event)" class="p-1.5 rounded-md transition-colors hover:text-amber-400 hover:bg-amber-400/10" title="ボードを書き出す" aria-label="ボードを書き出す">${ICONS.export}</button>`;
+                    actions += `<button data-item-action="export" class="p-1.5 rounded-md transition-colors hover:text-amber-400 hover:bg-amber-400/10" title="ボードを書き出す" aria-label="ボードを書き出す">${ICONS.export}</button>`;
                 }
-                actions += `<button onclick="openRenameModal(${itemId}, ${itemName}, ${isBoard}, event)" class="p-1.5 rounded-md transition-colors hover:text-blue-400 hover:bg-blue-400/10" aria-label="名前を変更">${ICONS.edit}</button><button onclick="${isBoard?'deleteBoard':'deleteFolder'}(${itemId}, event)" class="p-1.5 rounded-md transition-colors hover:text-red-400 hover:bg-red-400/10" aria-label="削除">${ICONS.trash}</button></div>`;
+                actions += `<button data-item-action="rename" class="p-1.5 rounded-md transition-colors hover:text-blue-400 hover:bg-blue-400/10" aria-label="名前を変更">${ICONS.edit}</button><button data-item-action="delete" class="p-1.5 rounded-md transition-colors hover:text-red-400 hover:bg-red-400/10" aria-label="削除">${ICONS.trash}</button></div>`;
                 
-                div.innerHTML = `<div class="truncate flex items-center min-w-0">${icon}<span class="text-xs font-semibold truncate">${escapeHtml(item.name)}</span></div>${actions}`;
+                div.innerHTML = `<button type="button" class="sidebar-select truncate flex items-center min-w-0" aria-label="${isBoard ? 'ボード' : 'フォルダ'}：${escapeHtml(item.name)}">${icon}<span class="text-xs font-semibold truncate">${escapeHtml(item.name)}</span></button>${actions}`;
+                const itemActions = {
+                    export: event => openExportBoardModal(item.id, event),
+                    rename: event => openRenameModal(item.id, item.name, isBoard, event),
+                    delete: event => (isBoard ? deleteBoard : deleteFolder)(item.id, event)
+                };
+                div.querySelectorAll('[data-item-action]').forEach(button => {
+                    button.addEventListener('click', itemActions[button.dataset.itemAction]);
+                });
                 return div;
             };
             data.folders.forEach(f => {
@@ -248,24 +257,9 @@
             }
         }
 
-        function parseYouTubeId(url) {
-            // 通常: youtube.com/watch?v=ID, youtu.be/ID, /embed/ID, /shorts/ID
-            const patterns = [
-                /[?&]v=([a-zA-Z0-9_-]{11})/,
-                /youtu\.be\/([a-zA-Z0-9_-]{11})/,
-                /\/embed\/([a-zA-Z0-9_-]{11})/,
-                /\/shorts\/([a-zA-Z0-9_-]{11})/,
-            ];
-            for (const p of patterns) {
-                const m = url.match(p);
-                if (m) return m[1];
-            }
-            return null;
-        }
-
         function playYouTube(postId, youtubeId) {
             const media = document.getElementById(`youtube-media-${postId}`);
-            if (!media || media.querySelector('iframe')) return;
+            if (!media || media.querySelector('iframe') || !/^[A-Za-z0-9_-]{11}$/.test(youtubeId)) return;
 
             const card = media.closest('.bookmark-card');
             if (card) card.classList.add('is-active');
@@ -276,8 +270,8 @@
             thumbnail.outerHTML = `
                 <iframe
                     class="youtube-embed"
-                    src="https://www.youtube.com/embed/${encodeURIComponent(youtubeId)}?autoplay=1&rel=0"
-                    title="YouTube video player"
+                    src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(youtubeId)}?autoplay=1&rel=0"
+                    title="YouTube video player" referrerpolicy="strict-origin-when-cross-origin"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                     allowfullscreen="true"
                     webkitallowfullscreen="true"
@@ -304,25 +298,18 @@
         }
 
         async function addPost() {
-            const input = document.getElementById('urlInput'); const url = input.value.trim();
-            if (!url) return;
+            const input = document.getElementById('urlInput');
+            if (!input.value.trim()) return;
+            const bookmark = BoardSecurity.parseBookmarkURL(input.value);
+            if (!bookmark) return showToast('X・YouTubeのURLを入力してください');
             const data = JSON.parse(JSON.stringify(window.appState.appData));
-            const board = data.boards.find(b => String(b.id) === String(data.activeBoardId)); if (!board) return showToast("ボード選択して");
-            if (board.posts.some(p => p.url === url)) return showToast("追加済み");
-            window.appState.searchQuery = ""; window.appState.selectedTags = [];
-            const searchInput = document.getElementById('searchInput'); if (searchInput) searchInput.value = "";
-
-            const youtubeId = parseYouTubeId(url);
-            if (youtubeId) {
-                board.posts.unshift({ type: 'youtube', url, id: Date.now().toString() + Math.random().toString(36).substr(2, 5), youtubeId, memo: "", tags: ["youtube"] });
-                await window.saveData(data); input.value = ''; showToast("追加しました");
-                return;
-            }
-
-            const tweetId = (url.match(/\/status\/(\d+)/) || [])[1];
-            if (!tweetId) return showToast("URLが無効（X または YouTube のURLを入力してください）");
-            board.posts.unshift({ type: 'tweet', url, id: Date.now().toString() + Math.random().toString(36).substr(2, 5), tweetId, memo: "", tags: ["x"] });
-            await window.saveData(data); input.value = ''; showToast("追加しました");
+            const board = data.boards.find(b => String(b.id) === String(data.activeBoardId));
+            if (!board) return showToast('ボードを選択してください');
+            if (board.posts.some(post => post.url === bookmark.url)) return showToast('追加済みです');
+            window.appState.searchQuery = ''; window.appState.selectedTags = [];
+            document.getElementById('searchInput').value = '';
+            board.posts.unshift({ ...bookmark, id: crypto.randomUUID(), memo: '', tags: [bookmark.type === 'youtube' ? 'youtube' : 'x'] });
+            await window.saveData(data); input.value = ''; showToast('追加しました');
         }
 
         async function addNoteCard() {
@@ -378,38 +365,62 @@
             const d = JSON.parse(JSON.stringify(window.appState.appData)); const board = d.boards.find(b => String(b.id) === String(d.activeBoardId)); const p = board?.posts.find(p => p.id === id);
             if (p && p.tags) { p.tags = p.tags.filter(tg => tg !== t); await window.saveData(d, true); renderTags(id, p.tags); updateSuggestedTags(id); if (window.appState.isFilterExpanded) updateFilterTagsUI(); }
         }
-        function renderTags(id, t) { const el = document.getElementById(`tags-display-${id}`); if (el) el.innerHTML = (t || []).map(tg => `<span class="tag-pill shadow-sm" style="${getTagStyle(tg)}">#${escapeHtml(tg)}<button type="button" class="tag-remove" onclick="removeTag(${escapeHtml(jsString(id))}, ${escapeHtml(jsString(tg))})" aria-label="${escapeHtml(tg)} タグを削除">×</button></span>`).join(''); }
+        function tagButton(label, className, tag, action) {
+            const button = document.createElement('button');
+            button.type = 'button'; button.textContent = label; button.className = className;
+            button.style.cssText = getTagStyle(tag);
+            button.addEventListener('click', action);
+            return button;
+        }
+        function renderTags(id, tags) {
+            const el = document.getElementById(`tags-display-${id}`);
+            if (!el) return;
+            el.replaceChildren(...(tags || []).map(tag => {
+                const pill = document.createElement('span'); pill.className = 'tag-pill shadow-sm';
+                pill.style.cssText = getTagStyle(tag); pill.append(document.createTextNode('#' + tag));
+                const remove = tagButton('×', 'tag-remove', tag, () => removeTag(id, tag));
+                remove.setAttribute('aria-label', tag + ' タグを削除'); pill.append(remove);
+                return pill;
+            }));
+        }
         function updateSuggestedTags(id) {
-            const el = document.getElementById(`tags-suggested-${id}`); if (!el) return; const board = window.appState.appData.boards.find(b => String(b.id) === String(window.appState.appData.activeBoardId)); if (!board) return; const p = board.posts.find(p => p.id === id); if (!p) return;
-            const a = [...new Set(board.posts.flatMap(p => p.tags || []))].sort(); const s = a.filter(tg => !(p.tags || []).includes(tg));
-            if (!s.length) { el.classList.add('hidden'); return; } el.classList.remove('hidden'); el.innerHTML = s.map(tg => `<button type="button" class="tag-suggest shadow-inner" style="${getTagStyle(tg)}" onclick="addTag(${escapeHtml(jsString(id))}, ${escapeHtml(jsString(tg))})">+ ${escapeHtml(tg)}</button>`).join('');
+            const board = window.appState.appData.boards.find(board => String(board.id) === String(window.appState.appData.activeBoardId));
+            const post = board?.posts.find(post => post.id === id);
+            const el = document.getElementById(`tags-suggested-${id}`);
+            if (!post || !el) return;
+            const tags = [...new Set(board.posts.flatMap(post => post.tags || []))].filter(tag => !(post.tags || []).includes(tag));
+            el.classList.toggle('hidden', !tags.length);
+            el.replaceChildren(...tags.map(tag => tagButton('+ ' + tag, 'tag-suggest shadow-inner', tag, () => addTag(id, tag))));
         }
         function updateFilterTagsUI() {
-            const board = window.appState.appData.boards.find(b => String(b.id) === String(window.appState.appData.activeBoardId)); const el = document.getElementById('tagFilterList'); if (!board || !el) return;
-            const a = [...new Set(board.posts.flatMap(p => p.tags || []))].sort(); if (!a.length) { el.innerHTML = `<span class="text-xs italic px-2" style="color:var(--text-muted)">タグがありません</span>`; return; }
-            const selected = window.appState.selectedTags;
-            el.innerHTML = a.map(t => {
-                const isActive = selected.includes(t);
-                const count = board.posts.filter(p => (p.tags||[]).includes(t)).length;
-                return `<button onclick="selectTagFilter(${escapeHtml(jsString(t))})" class="tag-pill transition-all ${isActive ? 'shadow-lg brightness-110 ring-1 ring-indigo-500/50' : 'opacity-60 hover:opacity-100'}" style="${getTagStyle(t)}${isActive ? ';outline:1.5px solid rgba(124,111,255,0.5)' : ''}">${escapeHtml(t)}<span style="opacity:0.6;font-size:9px;margin-left:3px">${count}</span></button>`;
-            }).join('');
-            // 選択中タグがある場合はクリアボタンを追加
-            if (selected.length > 0) {
-                el.innerHTML += `<button onclick="clearTagFilters()" class="tag-pill transition-all opacity-70 hover:opacity-100" style="background:rgba(239,68,68,0.12);color:#fca5a5;border-color:rgba(239,68,68,0.25);margin-left:4px">✕ クリア</button>`;
+            const board = window.appState.appData.boards.find(board => String(board.id) === String(window.appState.appData.activeBoardId));
+            const el = document.getElementById('tagFilterList');
+            if (!board || !el) return;
+            const tags = [...new Set(board.posts.flatMap(post => post.tags || []))].sort();
+            el.replaceChildren();
+            if (!tags.length) { const label = document.createElement('span'); label.className = 'text-xs px-2'; label.textContent = 'タグがありません'; el.append(label); return; }
+            tags.forEach(tag => {
+                const active = window.appState.selectedTags.includes(tag);
+                const count = board.posts.filter(post => (post.tags || []).includes(tag)).length;
+                const button = tagButton(`${tag} ${count}`, `tag-pill transition-all ${active ? 'shadow-lg brightness-110 ring-1 ring-indigo-500/50' : 'opacity-60 hover:opacity-100'}`, tag, () => selectTagFilter(tag));
+                button.setAttribute('aria-pressed', String(active));
+                el.append(button);
+            });
+            if (window.appState.selectedTags.length) {
+                const clear = document.createElement('button'); clear.type = 'button'; clear.className = 'tag-pill';
+                clear.textContent = '× クリア'; clear.addEventListener('click', clearTagFilters); el.append(clear);
             }
         }
 
         function buildCard(p) {
             if (!p.type) p.type = 'tweet'; // 旧データ後方互換
-            const postIdArg = escapeHtml(jsString(p.id));
             const postIdHtml = escapeHtml(p.id);
             const youtubeIdHtml = escapeHtml(p.youtubeId || '');
-            const youtubeIdArg = escapeHtml(jsString(p.youtubeId || ''));
             const tweetIdHtml = escapeHtml(p.tweetId || '');
             const card = document.createElement('div');
             card.className = 'bookmark-card group shadow-lg cursor-grab active:cursor-grabbing';
             card.setAttribute('data-id', p.id);
-            card.setAttribute('draggable', 'true');
+            card.setAttribute('draggable', String(!matchMedia('(pointer: coarse)').matches));
             card.ondragstart = (e) => handleDragStartPost(p.id, e);
             card.ondragend = handleDragEnd;
             card.ondragover = handleDragOver;
@@ -417,8 +428,9 @@
             card.ondrop = (e) => handleDropPostOnPost(p.id, e);
             card.onmouseleave = () => card.classList.remove('is-active');
             card.onclick = (e) => {
-                if (e.target.closest('button') || e.target.closest('textarea') || e.target.closest('input') || e.target.closest('a')) return;
-                card.classList.toggle('is-active');
+                if (e.target.closest('button, textarea, input, a, summary, .card-info-panel, .youtube-wrapper')) return;
+                const panel = card.querySelector('.card-info-panel');
+                if (panel) panel.open = !panel.open;
             };
 
             const tagSection = `
@@ -426,7 +438,7 @@
                 <div class="note-card-tags-section">
                     <div id="tags-display-${postIdHtml}" class="flex flex-wrap gap-1.5"></div>
                     <div id="tags-suggested-${postIdHtml}" class="flex flex-wrap gap-1.5"></div>
-                    <div class="tag-input-wrap"><span style="color:var(--text-muted)">${ICONS.tag}</span><input type="text" placeholder="Enterでタグ追加..." class="tag-text-input" onfocus="window.appState.isEditing = true" onblur="window.appState.isEditing = false" onkeydown="if(event.key === 'Enter' && !event.isComposing) { event.preventDefault(); addTag(${postIdArg}, this.value); this.value=''; }"></div>
+                    <div class="tag-input-wrap"><span style="color:var(--text-muted)">${ICONS.tag}</span><input type="text" placeholder="タグを追加" class="tag-text-input"></div>
                 </div>`;
 
             if (p.type === 'note') {
@@ -436,19 +448,13 @@
                         <div class="flex justify-between items-start">
                             <span class="note-card-badge">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                Note
+                                メモ
                             </span>
-                            <button onclick="removePost(${postIdArg})" class="card-delete-btn flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-all" style="padding:6px" aria-label="カードを削除">${ICONS.trash}</button>
+                            <button data-card-action="delete" class="card-delete-btn flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-all" style="padding:6px" aria-label="カードを削除">${ICONS.trash}</button>
                         </div>
                         <textarea id="note-title-${postIdHtml}" class="note-title-input" placeholder="タイトル..." rows="1"
-                            onfocus="window.appState.isEditing = true"
-                            onblur="window.appState.isEditing = false; updatePostField(${postIdArg},'title',this.value)"
-                            oninput="autoResizeTextarea(this)"
                         >${escapeHtml(p.title || '')}</textarea>
                         <textarea id="note-body-${postIdHtml}" class="note-body-input" placeholder="本文を入力..."
-                            onfocus="window.appState.isEditing = true"
-                            onblur="window.appState.isEditing = false; updatePostField(${postIdArg},'body',this.value)"
-                            oninput="autoResizeTextarea(this)"
                         >${escapeHtml(p.body || '')}</textarea>
                         ${tagSection}
                     </div>`;
@@ -456,16 +462,15 @@
                 // ── YouTubeカード ──
                 card.innerHTML = `
                     <div id="youtube-media-${postIdHtml}" class="relative w-full youtube-wrapper overflow-hidden">
-                        <div class="drop-shield" onclick="playYouTube(${postIdArg}, ${youtubeIdArg})"></div>
+                        <div class="drop-shield" data-card-action="play"></div>
                         <div class="media-actions">
-                            <button type="button" onclick="openYouTubeFullscreen(${postIdArg}, ${youtubeIdArg}, event)" class="media-action-btn" aria-label="全画面で再生">${ICONS.maximize}</button>
-                            <button onclick="removePost(${postIdArg})" class="card-delete-btn flex items-center justify-center" aria-label="カードを削除">${ICONS.trash}</button>
+                            <button type="button" data-card-action="fullscreen" class="media-action-btn" aria-label="全画面で再生">${ICONS.maximize}</button>
+                            <button data-card-action="delete" class="card-delete-btn flex items-center justify-center" aria-label="カードを削除">${ICONS.trash}</button>
                         </div>
-                        <button type="button" class="youtube-thumb-wrap block" onclick="playYouTube(${postIdArg}, ${youtubeIdArg})" aria-label="埋め込みでYouTubeを再生">
+                        <button type="button" class="youtube-thumb-wrap block" data-card-action="play" aria-label="埋め込みでYouTubeを再生">
                             <img
                                 src="https://i.ytimg.com/vi/${youtubeIdHtml}/hqdefault.jpg"
                                 alt="YouTube thumbnail"
-                                onerror="this.src='https://i.ytimg.com/vi/${youtubeIdHtml}/mqdefault.jpg'"
                             >
                             <span class="youtube-play-badge" aria-hidden="true">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
@@ -473,45 +478,95 @@
 
                         </button>
                     </div>
-                    <div class="card-info-panel"><div class="card-info-inner"><div class="flex flex-col gap-4">
+                    <details class="card-info-panel"><div class="card-info-inner"><div class="flex flex-col gap-4">
                         <div class="flex justify-between items-center px-1">
-                            <label class="field-label">Memo</label>
-                            <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener noreferrer" class="text-[10px] flex items-center gap-1 font-bold" style="color:#f87171" onmouseover="this.style.color='#fca5a5'" onmouseout="this.style.color='#f87171'">
+                            <label class="field-label">メモ</label>
+                            <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener noreferrer" class="text-[10px] flex items-center gap-1 font-bold" style="color:#f87171">
                                 YouTubeで見る ${ICONS.external}
                             </a>
                         </div>
-                        <textarea placeholder="メモ..." class="memo-textarea" onfocus="window.appState.isEditing = true" onblur="window.appState.isEditing = false; updatePostField(${postIdArg},'memo',this.value)">${escapeHtml(p.memo || "")}</textarea>
-                        <div><label class="field-label">Tags</label>
+                        <textarea placeholder="メモ..." class="memo-textarea">${escapeHtml(p.memo || "")}</textarea>
+                        <div><label class="field-label">タグ</label>
                             <div id="tags-display-${postIdHtml}" class="flex flex-wrap gap-1.5 mb-2.5"></div>
                             <div id="tags-suggested-${postIdHtml}" class="flex flex-wrap gap-1.5 mb-3"></div>
-                            <div class="tag-input-wrap"><span style="color:var(--text-muted)">${ICONS.tag}</span><input type="text" placeholder="Enterでタグ追加..." class="tag-text-input" onfocus="window.appState.isEditing = true" onblur="window.appState.isEditing = false" onkeydown="if(event.key === 'Enter' && !event.isComposing) { event.preventDefault(); addTag(${postIdArg}, this.value); this.value=''; }"></div>
+                            <div class="tag-input-wrap"><span style="color:var(--text-muted)">${ICONS.tag}</span><input type="text" placeholder="タグを追加" class="tag-text-input"></div>
                         </div>
-                    </div></div></div>`;
+                    </div></div></details>`;
             } else {
                 // ── Tweetカード ──
                 card.innerHTML = `
                     <div class="relative w-full min-h-[100px] tweet-wrapper overflow-hidden">
                         <div class="drop-shield"></div>
-                        <div class="absolute top-3 right-3 z-50 opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100">
-                            <button onclick="removePost(${postIdArg})" class="card-delete-btn flex items-center justify-center" aria-label="カードを削除">${ICONS.trash}</button>
+                        <div class="tweet-delete-actions absolute top-3 right-3 z-50 opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100">
+                            <button data-card-action="delete" class="card-delete-btn flex items-center justify-center" aria-label="カードを削除">${ICONS.trash}</button>
                         </div>
                         <div class="p-1" id="tweet-${postIdHtml}"><div class="skeleton-placeholder m-2"></div></div>
                     </div>
-                    <div class="card-info-panel"><div class="card-info-inner"><div class="flex flex-col gap-4">
+                    <details class="card-info-panel"><div class="card-info-inner"><div class="flex flex-col gap-4">
                         <div class="flex justify-between items-center px-1">
-                            <label class="field-label">Memo</label>
+                            <label class="field-label">メモ</label>
                             <a href="https://x.com/i/status/${tweetIdHtml}" target="_blank" rel="noopener noreferrer" class="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-bold">
                                 Xで見る ${ICONS.external}
                             </a>
                         </div>
-                        <textarea placeholder="メモ..." class="memo-textarea" onfocus="window.appState.isEditing = true" onblur="window.appState.isEditing = false; updatePostField(${postIdArg},'memo',this.value)">${escapeHtml(p.memo || "")}</textarea>
-                        <div><label class="field-label">Tags</label>
+                        <textarea placeholder="メモ..." class="memo-textarea">${escapeHtml(p.memo || "")}</textarea>
+                        <div><label class="field-label">タグ</label>
                             <div id="tags-display-${postIdHtml}" class="flex flex-wrap gap-1.5 mb-2.5"></div>
                             <div id="tags-suggested-${postIdHtml}" class="flex flex-wrap gap-1.5 mb-3"></div>
-                            <div class="tag-input-wrap"><span style="color:var(--text-muted)">${ICONS.tag}</span><input type="text" placeholder="Enterでタグ追加..." class="tag-text-input" onfocus="window.appState.isEditing = true" onblur="window.appState.isEditing = false" onkeydown="if(event.key === 'Enter' && !event.isComposing) { event.preventDefault(); addTag(${postIdArg}, this.value); this.value=''; }"></div>
+                            <div class="tag-input-wrap"><span style="color:var(--text-muted)">${ICONS.tag}</span><input type="text" placeholder="タグを追加" class="tag-text-input"></div>
                         </div>
-                    </div></div></div>`;
+                    </div></div></details>`;
             }
+            const panel = card.querySelector('details.card-info-panel');
+            if (panel) {
+                const summary = document.createElement('summary');
+                summary.className = 'card-panel-toggle';
+                summary.innerHTML = '<span>メモ・タグ</span><span class="panel-open-label" aria-hidden="true">⌄</span><span class="panel-close-label" aria-hidden="true">⌃</span>';
+                panel.prepend(summary);
+                const close = document.createElement('button');
+                close.type = 'button';
+                close.className = 'btn-ghost card-panel-close';
+                close.textContent = '閉じる';
+                close.setAttribute('aria-label', 'パネルを閉じる');
+                function closePanel() {
+                    if (panel.contains(document.activeElement)) document.activeElement.blur();
+                    panel.open = false;
+                    summary.focus({ preventScroll: true });
+                }
+                close.addEventListener('click', closePanel);
+                panel.querySelector('.card-info-inner').appendChild(close);
+                panel.addEventListener('keydown', event => {
+                    if (event.key !== 'Escape') return;
+                    event.preventDefault(); event.stopPropagation(); closePanel();
+                });
+                if (p.type === 'tweet') panel.addEventListener('toggle', () => card.classList.toggle('is-active', panel.open));
+            }
+            const actions = { delete: () => removePost(p.id), play: () => playYouTube(p.id, p.youtubeId), fullscreen: event => openYouTubeFullscreen(p.id, p.youtubeId, event) };
+            card.querySelectorAll('[data-card-action]').forEach(control => control.addEventListener('click', actions[control.dataset.cardAction]));
+            const thumbnail = card.querySelector('.youtube-thumb-wrap img');
+            if (thumbnail) thumbnail.addEventListener('error', () => {
+                if (thumbnail.dataset.fallback) { thumbnail.hidden = true; return; }
+                thumbnail.dataset.fallback = 'true';
+                thumbnail.src = `https://i.ytimg.com/vi/${encodeURIComponent(p.youtubeId)}/mqdefault.jpg`;
+            });
+            card.querySelectorAll('textarea, .tag-text-input').forEach(field => {
+                field.addEventListener('focus', () => { window.appState.isEditing = true; });
+                field.addEventListener('blur', () => {
+                    window.appState.isEditing = false;
+                    if (field.matches('textarea')) {
+                        const key = field.classList.contains('note-title-input') ? 'title' : field.classList.contains('note-body-input') ? 'body' : 'memo';
+                        updatePostField(p.id, key, field.value);
+                    }
+                });
+                if (field.matches('textarea')) field.addEventListener('input', () => autoResizeTextarea(field));
+                else field.addEventListener('keydown', event => {
+                    if (event.key !== 'Enter' || event.isComposing) return;
+                    event.preventDefault(); addTag(p.id, field.value); field.value = '';
+                });
+            });
+            card.querySelectorAll('.note-title-input, .note-body-input, .memo-textarea').forEach(field => {
+                field.setAttribute('aria-label', field.classList.contains('note-title-input') ? 'メモのタイトル' : field.classList.contains('note-body-input') ? 'メモの本文' : 'ブックマークのメモ');
+            });
             return card;
         }
 
@@ -532,76 +587,88 @@
             const board = window.appState.appData.boards.find(b => String(b.id) === String(window.appState.appData.activeBoardId));
             const container = document.getElementById('gallery'); if (!container) return; if (!board) { document.getElementById('activeBoardTitle').textContent = "ボードを選択してください"; container.innerHTML = ''; return; }
             document.getElementById('activeBoardTitle').textContent = board.name;
+            document.getElementById('activeBoardTitle').title = board.name;
             let posts = board.posts;
             if (window.appState.searchQuery) posts = posts.filter(p =>
-                (p.memo||"").toLowerCase().includes(window.appState.searchQuery) ||
-                (p.title||"").toLowerCase().includes(window.appState.searchQuery) ||
-                (p.body||"").toLowerCase().includes(window.appState.searchQuery)
+                searchText(p.memo).includes(window.appState.searchQuery) ||
+                searchText(p.title).includes(window.appState.searchQuery) ||
+                searchText(p.body).includes(window.appState.searchQuery)
             );
             if (window.appState.selectedTags.length) posts = posts.filter(p => window.appState.selectedTags.every(t => (p.tags||[]).includes(t)));
             if (window.appState.isFilterExpanded) updateFilterTagsUI();
 
-            // カードIDリストが変わった時だけ再描画
-            const allCardIds = Array.from(container.querySelectorAll('.bookmark-card')).map(c => c.getAttribute('data-id'));
-            const newIds = posts.map(p => p.id);
-            if (JSON.stringify(allCardIds) !== JSON.stringify(newIds)) {
-                container.innerHTML = '';
-                if (!posts.length) {
-                    document.getElementById('emptyState').classList.remove('hidden');
-                    return;
-                }
-                document.getElementById('emptyState').classList.add('hidden');
-
-                const colCount = getColumnCount();
-                const cols = Array.from({ length: colCount }, () => {
-                    const col = document.createElement('div');
-                    col.className = 'board-col';
-                    container.appendChild(col);
-                    return col;
-                });
-
-                posts.forEach((p, i) => {
-                    const card = buildCard(p);
-                    cols[i % colCount].appendChild(card);
-                    renderTags(p.id, p.tags);
-                    updateSuggestedTags(p.id);
-                    if (p.type === 'note') {
-                        setTimeout(() => {
-                            const t = document.getElementById('note-title-' + p.id);
-                            const b = document.getElementById('note-body-' + p.id);
-                            if (t) autoResizeTextarea(t);
-                            if (b) autoResizeTextarea(b);
-                        }, 0);
-                    } else if (p.type === 'tweet') {
-                        const tc = document.getElementById('tweet-' + p.id);
-                        const check = setInterval(() => { if (window.twttr && window.twttr.widgets) { clearInterval(check); window.twttr.widgets.createTweet(p.tweetId, tc, { theme: 'dark', lang: 'ja', dnt: true, conversation: 'none', cards: 'visible', width: 'auto' }).then(() => { const s = tc.querySelector('.skeleton-placeholder'); if (s) s.remove(); }); } }, 100); setTimeout(() => clearInterval(check), 8000);
+            const count = document.getElementById('boardCount');
+            count.textContent = posts.length === board.posts.length ? String(posts.length) : `${posts.length} / ${board.posts.length}`;
+            count.setAttribute('aria-label', `${posts.length}件 / 全${board.posts.length}件`);
+            document.getElementById('clearSearch').hidden = !document.getElementById('searchInput').value;
+            const filter = document.getElementById('filterToggleBtn');
+            filter.classList.toggle('has-filters', window.appState.selectedTags.length > 0);
+            const empty = document.getElementById('emptyState');
+            empty.classList.toggle('hidden', posts.length > 0);
+            empty.querySelector('p').textContent = board.posts.length ? '見つかりません' : 'カードがありません';
+            const emptyAction = document.getElementById('emptyAction');
+            emptyAction.textContent = board.posts.length ? '絞り込みを解除' : 'メモを追加';
+            emptyAction.onclick = board.posts.length ? () => {
+                document.getElementById('searchInput').value = '';
+                window.appState.searchQuery = '';
+                clearTagFilters();
+            } : addNoteCard;
+            const newIds = JSON.stringify([board.id, ...posts.map(post => post.id)]);
+            const needsCards = container.dataset.cardIds !== newIds;
+            const colCount = getColumnCount();
+            const needsColumns = container.children.length !== (posts.length ? colCount : 0);
+            if (needsCards || (needsColumns && !window.appState.isEditing)) {
+                const existing = new Map([...container.querySelectorAll('.bookmark-card')].map(card => [card.dataset.id, card]));
+                const cols = posts.length ? Array.from({ length: colCount }, () => {
+                    const col = document.createElement('div'); col.className = 'board-col'; return col;
+                }) : [];
+                posts.forEach((post, index) => {
+                    const card = existing.get(String(post.id)) || buildCard(post);
+                    cols[index % colCount].appendChild(card);
+                    if (post.type === 'tweet' && !existing.has(String(post.id))) {
+                        const tc = card.querySelector('[id^="tweet-"]');
+                        const check = setInterval(() => {
+                            if (window.twttr?.widgets) {
+                                clearInterval(check);
+                                window.twttr.widgets.createTweet(post.tweetId, tc, { theme: 'dark', lang: 'ja', dnt: true, conversation: 'none', cards: 'visible', width: 'auto' }).then(() => tc.querySelector('.skeleton-placeholder')?.remove());
+                            }
+                        }, 100);
+                        setTimeout(() => clearInterval(check), 8000);
                     }
                 });
+                container.replaceChildren(...cols);
+                container.dataset.cardIds = newIds;
             }
+            // Update synchronized fields without replacing focused inputs or embedded players.
+            const currentCards = new Map([...container.querySelectorAll('.bookmark-card')].map(card => [card.dataset.id, card]));
+            posts.forEach(post => {
+                const card = currentCards.get(String(post.id));
+                if (!card) return;
+                for (const [selector, field] of [['.note-title-input', 'title'], ['.note-body-input', 'body'], ['.memo-textarea', 'memo']]) {
+                    const input = card.querySelector(selector);
+                    if (input && input !== document.activeElement) { input.value = post[field] || ''; autoResizeTextarea(input); }
+                }
+                renderTags(post.id, post.tags);
+                updateSuggestedTags(post.id);
+            });
         }
 
-        // ウィンドウリサイズ時に列数が変わったら再描画
-        let _lastColCount = 0;
-        let _resizeTimer = null;
-        window.addEventListener('resize', () => {
-            clearTimeout(_resizeTimer);
-            _resizeTimer = setTimeout(() => {
-                const gallery = document.getElementById('gallery');
-                if (!gallery) return;
-                const newCount = getColumnCount();
-                if (newCount !== _lastColCount) {
-                    _lastColCount = newCount;
-                    gallery.innerHTML = '';
-                    renderActiveBoard();
-                }
-            }, 120);
+        // Keyboard height changes must not rebuild cards or discard text edits.
+        const galleryObserver = new ResizeObserver(() => {
+            if (window.appState && !window.appState.isEditing) renderActiveBoard();
         });
+        galleryObserver.observe(document.getElementById('gallery'));
+        document.addEventListener('focusout', () => setTimeout(() => {
+            if (!window.appState?.isEditing) renderActiveBoard();
+        }, 0));
 
         window.exportData = () => { const d = JSON.stringify(window.appState.appData, null, 2); const u = 'data:application/json;charset=utf-8,'+ encodeURIComponent(d); const l = document.createElement('a'); l.setAttribute('href', u); l.setAttribute('download', 'backup.json'); l.click(); showToast('出力完了'); };
         window.importData = () => document.getElementById('importFile').click();
         
         document.getElementById('importFile').addEventListener('change', e => {
             const f = e.target.files[0]; if (!f) return;
+            e.target.value = '';
+            if (f.size > BoardSecurity.MAX_IMPORT_BYTES) return showToast('ファイルは1MiBまでです');
             const r = new FileReader();
             r.onload = async ev => {
                 try {
@@ -609,7 +676,7 @@
                     const data = JSON.parse(JSON.stringify(window.appState.appData));
                     if (d.type === 'single_board') {
                         const fileName = f.name.replace(/\.[^/.]+$/, "");
-                        const newBoard = { ...d.data, id: Date.now().toString(), folderId: null, name: fileName };
+                        const newBoard = { ...d.data, id: crypto.randomUUID(), folderId: null, name: fileName, posts: (d.data.posts || []).map(post => ({ ...post, id: crypto.randomUUID() })) };
                         data.boards.push(newBoard);
                         data.activeBoardId = newBoard.id;
                         await window.saveData(data);
@@ -618,15 +685,45 @@
                         await window.saveData(window.normalizeAppData ? window.normalizeAppData(d) : d);
                         showToast('データを復元しました');
                     } else { showToast('無効な形式'); }
-                } catch (err) { showToast('エラーが発生しました'); }
+                } catch (err) { showToast(err.message || 'データを確認してください'); }
             };
             r.readAsText(f);
         });
 
-        window.toggleSidebar = toggleSidebar; window.toggleSearch = toggleSearch; window.toggleFilter = toggleFilter; window.openNewBoardModal = openNewBoardModal; window.openNewFolderModal = openNewFolderModal; window.closeModal = closeModal; window.confirmCreateBoard = confirmCreateBoard; window.confirmCreateFolder = confirmCreateFolder; window.deleteBoard = deleteBoard; window.deleteFolder = deleteFolder; window.addPost = addPost; window.removePost = removePost; window.updatePostField = updatePostField; window.handleSearch = handleSearch; window.selectTagFilter = selectTagFilter; window.handleSearchMouseLeave = handleSearchMouseLeave; window.addTag = addTag; window.removeTag = removeTag; window.openHelpModal = openHelpModal; window.openRenameModal = openRenameModal; window.selectBoard = selectBoard; window.toggleFolder = toggleFolder; window.openExportBoardModal = openExportBoardModal; window.confirmExportBoard = confirmExportBoard; window.addNoteCard = addNoteCard; window.autoResizeTextarea = autoResizeTextarea; window.clearTagFilters = clearTagFilters;
+        window.toggleSearch = toggleSearch; window.toggleFilter = toggleFilter; window.openNewBoardModal = openNewBoardModal; window.openNewFolderModal = openNewFolderModal; window.closeModal = closeModal; window.confirmCreateBoard = confirmCreateBoard; window.confirmCreateFolder = confirmCreateFolder; window.deleteBoard = deleteBoard; window.deleteFolder = deleteFolder; window.addPost = addPost; window.removePost = removePost; window.updatePostField = updatePostField; window.handleSearch = handleSearch; window.selectTagFilter = selectTagFilter; window.addTag = addTag; window.removeTag = removeTag; window.openHelpModal = openHelpModal; window.openRenameModal = openRenameModal; window.selectBoard = selectBoard; window.toggleFolder = toggleFolder; window.openExportBoardModal = openExportBoardModal; window.confirmExportBoard = confirmExportBoard; window.addNoteCard = addNoteCard; window.autoResizeTextarea = autoResizeTextarea; window.clearTagFilters = clearTagFilters;
         window.playYouTube = playYouTube;
         window.openYouTubeFullscreen = openYouTubeFullscreen;
 
-        document.getElementById('urlInput').addEventListener('keydown', (e) => e.key === 'Enter' && addPost());
-        document.getElementById('newBoardName').addEventListener('keydown', (e) => e.key === 'Enter' && confirmCreateBoard());
-        document.getElementById('newFolderName').addEventListener('keydown', (e) => e.key === 'Enter' && confirmCreateFolder());
+        function submitOnEnter(id, action) {
+            document.getElementById(id).addEventListener('keydown', event => {
+                if (event.key !== 'Enter' || event.isComposing) return;
+                event.preventDefault();
+                action();
+            });
+        }
+        submitOnEnter('urlInput', addPost);
+        submitOnEnter('newBoardName', confirmCreateBoard);
+        submitOnEnter('newFolderName', confirmCreateFolder);
+
+        const pageActions = { openNewFolderModal, openNewBoardModal, exportData: window.exportData, importData: window.importData,
+            addPost, addNoteCard, toggleSearch, toggleFilter, openHelpModal, closeModal, confirmCreateBoard, confirmCreateFolder, confirmExportBoard };
+        document.querySelectorAll('[data-action]').forEach(button => {
+            const action = pageActions[button.dataset.action];
+            if (action) button.addEventListener('click', () => { Promise.resolve(action()).catch(() => showToast('保存できません。データを確認してください')); });
+        });
+        const searchInput = document.getElementById('searchInput');
+        let composingSearch = false;
+        searchInput.addEventListener('compositionstart', () => { composingSearch = true; });
+        searchInput.addEventListener('compositionend', () => { composingSearch = false; handleSearch(searchInput.value); });
+        searchInput.addEventListener('input', event => {
+            document.getElementById('clearSearch').hidden = !searchInput.value;
+            if (!composingSearch && !event.isComposing) handleSearch(searchInput.value);
+        });
+        searchInput.addEventListener('keydown', event => {
+            if (event.key !== 'Escape') return;
+            event.stopPropagation();
+            if (event.isComposing || composingSearch) return;
+            event.preventDefault();
+            if (searchInput.value) { searchInput.value = ''; handleSearch(''); }
+            else searchInput.blur();
+        });
